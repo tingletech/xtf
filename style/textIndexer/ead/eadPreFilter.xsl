@@ -2,6 +2,8 @@
    xmlns:xs="http://www.w3.org/2001/XMLSchema"
    xmlns:parse="http://cdlib.org/xtf/parse"
    xmlns:xtf="http://cdlib.org/xtf"
+   xmlns:FileUtils="java:org.cdlib.xtf.xslt.FileUtils"
+   xmlns:saxon="http://saxon.sf.net/"
    exclude-result-prefixes="#all">
    
    <!--
@@ -60,6 +62,7 @@
    <!-- normalize the file to the EAD 2002 DTD                                 -->
    <!-- ====================================================================== -->
 
+   <xsl:variable name="docpath" select="saxon:system-id()"/>
    <xsl:variable name="dtdVersion">
         <xsl:apply-templates mode="at2oac"/>
    </xsl:variable>
@@ -261,8 +264,21 @@
    
    <xsl:template name="get-meta">
       <!-- Access Dublin Core Record (if present) -->
+      <xsl:variable name="base" select="replace($docpath, '(.*)\.[^\.]+$', '$1')"/>
+      <xsl:variable name="dcpath" select="concat($base, '.dc.xml')"/>
       <xsl:variable name="dcMeta">
-         <xsl:call-template name="get-dc-meta"/>
+         <xsl:if test="FileUtils:exists($dcpath)">
+            <xsl:apply-templates select="document($dcpath)" mode="inmeta"/>
+            <xsl:if test="not(document($dcpath)//*:identifier)">
+               <identifier xtf:meta="true" xtf:tokenize="no">
+                  <xsl:value-of select="replace(replace($docpath,'^.+/',''),'\.[A-Za-z]+$','')"/>
+               </identifier>
+            </xsl:if>
+            <!-- special field for OAI -->
+            <set xtf:meta="true">
+               <xsl:value-of select="'public'"/>
+            </set>
+         </xsl:if>
       </xsl:variable>
       
       <!-- If no Dublin Core present, then extract meta-data from the EAD -->
